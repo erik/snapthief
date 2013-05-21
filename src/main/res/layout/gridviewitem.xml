@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="128px"
+              android:layout_height="128px" android:clickable="false" android:divider="#51ff12">
+
+    <ImageView
+            android:id="@+id/thumbnail"
+            android:layout_width="128px"
+            android:layout_height="128px"
+            android:padding="1dp"
+            android:clickable="true"
+            android:longClickable="false"></ImageView>
+
+</LinearLayout>
