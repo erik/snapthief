@@ -14,34 +14,21 @@
             android:layout_height="fill_parent" android:id="@+id/linearLayout">
         <LinearLayout
                 android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:layout_above="@+id/linearLayout" android:layout_alignLeft="@+id/linearLayout">
-            <ToggleButton
-                    android:layout_width="fill_parent"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/activeToggle"
-                    android:clickable="true"
-                    android:checked="false" android:singleLine="true" android:enabled="true"
-                    android:layout_alignParentTop="true" android:layout_alignLeft="@+id/imagesList"/>
-        </LinearLayout>
-        <LinearLayout
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content" android:gravity="right" android:paddingTop="5dp"
+                android:layout_height="wrap_content" android:gravity="left" android:paddingTop="5dp"
                 android:paddingBottom="5dp">
             <TextView
                     android:layout_width="wrap_content"
-                    android:layout_height="fill_parent"
+                    android:layout_height="wrap_content"
                     android:textAppearance="?android:attr/textAppearanceMedium"
                     android:text="Images / Videos Captured:"
-                    android:id="@+id/textView"
-                    android:paddingRight="10dp" android:gravity="center_vertical"/>
+                    android:id="@+id/textView" android:typeface="monospace"/>
             <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="fill_parent"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:text="0"
                     android:id="@+id/numImages" android:typeface="monospace" android:textColor="#ff4d1a"
-                    android:gravity="right|fill_vertical"/>
+                    android:gravity="right|fill_vertical" android:layout_gravity="right"/>
         </LinearLayout>
         <GridView android:layout_height="fill_parent" android:id="@+id/gridView"
                   android:fastScrollEnabled="true"

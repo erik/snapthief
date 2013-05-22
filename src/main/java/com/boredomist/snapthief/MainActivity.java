@@ -1,18 +1,16 @@
 package com.boredomist.snapthief;
 
 import android.app.Activity;
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.*;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v4.app.NotificationCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,13 +34,12 @@ public class MainActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             Bundle extras = intent.getExtras();
-            String type = intent.getAction();
 
-            if (type.equals(SnapThiefService.UPDATE_ACTION)) {
+            if (SnapThiefService.UPDATE_ACTION.equals(intent.getAction())) {
                 ArrayList<File> files = (ArrayList<File>) extras.get("files");
 
                 if (lastNum != -1 && files.size() > lastNum) {
-                    Toast.makeText(getApplicationContext(), "Grabbed " + (files.size() - lastNum) + "images!",
+                    Toast.makeText(getApplicationContext(), "Grabbed " + (files.size() - lastNum) + " image(s)!",
                             Toast.LENGTH_LONG).show();
                 }
 
@@ -58,28 +55,7 @@ public class MainActivity extends Activity {
                 gridView.setAdapter(adapter);
 
                 numberSnaps.setText("" + adapter.getCount());
-            } else if (type.equals(SnapThiefService.KILLED_ACTION)) {
-                toggleButton.setEnabled(false);
-
-                Toast.makeText(getApplicationContext(), "Service crashed! Check the logs...", Toast.LENGTH_LONG).show();
-                if (mBound) {
-                    unbindService(connection);
-                    mBound = false;
-                }
             }
-        }
-    };
-    private ServiceConnection connection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder service) {
-            SnapThiefService.SnapThiefBinder binder = (SnapThiefService.SnapThiefBinder) service;
-            mService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            mBound = false;
         }
     };
 
@@ -110,37 +86,12 @@ public class MainActivity extends Activity {
             }
         });
 
-        toggleButton = (ToggleButton) findViewById(R.id.activeToggle);
-        toggleButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (mService.isActive()) {
-                    mService.stopStealing();
-
-                    NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                    notificationManager.cancel(0);
-                } else {
-                    if (!mService.getThread().isAlive())
-                        mService.getThread().start();
-
-                    mService.startStealing();
-
-                    Notification notification = new NotificationCompat.Builder(getApplicationContext())
-                            .setContentTitle("SnapThief running!")
-                            .setContentText("Capturing images/videos every now and then.")
-                            .setSmallIcon(R.drawable.ic_launcher)
-                            .setOngoing(true)
-                            .setContentIntent(PendingIntent.getActivity(getApplicationContext(), 0,
-                                    new Intent(getApplicationContext(), MainActivity.class)
-                                            .setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                                    | Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                                    PendingIntent.FLAG_CANCEL_CURRENT))
-                            .build();
-                    NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                    notificationManager.notify(0, notification);
-                }
-            }
-        });
+//        toggleButton = (ToggleButton) findViewById(R.id.activeToggle);
+//        toggleButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//            }
+//        });
     }
 
     @Override
@@ -155,7 +106,7 @@ public class MainActivity extends Activity {
         super.onStart();
 
         Intent intent = new Intent(this, SnapThiefService.class);
-        bindService(intent, connection, Context.BIND_AUTO_CREATE);
+        startService(intent);
 
         registerReceiver(receiver, new IntentFilter(SnapThiefService.UPDATE_ACTION));
         registerReceiver(receiver, new IntentFilter(SnapThiefService.KILLED_ACTION));
@@ -164,18 +115,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+
+        unregisterReceiver(receiver);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        if (mBound) {
-            unbindService(connection);
-            mBound = false;
-        }
-
-        unregisterReceiver(receiver);
     }
 
     public class ImageAdapter extends BaseAdapter implements Parcelable {
