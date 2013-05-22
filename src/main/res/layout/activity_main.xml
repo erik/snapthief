@@ -17,16 +17,30 @@
                 android:layout_height="wrap_content" android:gravity="left" android:paddingTop="5dp"
                 android:paddingBottom="5dp">
             <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:textAppearance="?android:attr/textAppearanceMedium"
-                    android:text="Images / Videos Captured:"
+                    android:text="Capture Images / Videos:"
+                    android:id="@+id/textView2" android:layout_gravity="center|left" android:layout_weight="1"/>
+            <ToggleButton
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text="New ToggleButton"
+                    android:id="@+id/toggleButton" android:checked="false" android:clickable="false"
+                    android:enabled="true" android:layout_weight="1"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="left"
+                      android:paddingTop="5dp" android:paddingBottom="5dp" android:id="@+id/linearLayout2">
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Captured:"
                     android:id="@+id/textView" android:typeface="monospace"/>
             <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="fill_parent"
+                    android:layout_height="wrap_content"
                     android:textAppearance="?android:attr/textAppearanceLarge"
-                    android:text="0"
+                    android:text="..."
                     android:id="@+id/numImages" android:typeface="monospace" android:textColor="#ff4d1a"
                     android:gravity="right|fill_vertical" android:layout_gravity="right"/>
         </LinearLayout>

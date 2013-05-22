@@ -1,22 +1,27 @@
 package com.boredomist.snapthief;
 
-import android.app.IntentService;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class SnapThiefService extends IntentService {
-    public static final String UPDATE_ACTION = "com.boredomist.snapthief.UPDATE_ACTION";
-    public static final String KILLED_ACTION = "com.boredomist.snapthief.KILLED_ACTION";
-    private static boolean established = false;
-    private static Process rootProc;
-    private static DataOutputStream os;
-    private boolean active = false;
+public class SnapThiefService extends Service {
+    private static boolean running = false;
+    private Process rootProc;
+    private DataOutputStream os;
+    private NotificationCompat.Builder builder;
+    private NotificationManager manager;
     private Timer timer = new Timer(true);
     private TimerTask timerTask = new TimerTask() {
         @Override
@@ -37,61 +42,17 @@ public class SnapThiefService extends IntentService {
 
                     os.flush();
                 }
-
-                File dir = new File("/sdcard/snapthief/");
-                File[] files = dir.listFiles();
-
-                ArrayList<File> fileResult = new ArrayList<File>();
-
-                if (files != null) {
-                    for (File f : files) {
-                        if (!f.getName().contains(".nomedia"))
-                            fileResult.add(f);
-                    }
-                }
-
-                Intent i = new Intent(UPDATE_ACTION);
-                i.putExtra("files", fileResult);
-                sendBroadcast(i);
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            builder.setWhen(System.currentTimeMillis())
+                    .setOngoing(true);
+            manager.notify(0, builder.build());
         }
     };
 
     public SnapThiefService() {
-        super("SnapThiefService");
-        if (rootProc == null) {
-            try {
-                rootProc = Runtime.getRuntime().exec("su");
-                os = new DataOutputStream(rootProc.getOutputStream());
-            } catch (IOException e) {
-                rootProc = null;
-                e.printStackTrace();
-                Intent i = new Intent(KILLED_ACTION);
-                sendBroadcast(i);
-                stopSelf();
-            }
-        }
-    }
-
-    public void toggleStealing() {
-        active = !active;
-        if (active)
-            timerTask.run();
-    }
-
-    public void stopStealing() {
-        active = false;
-    }
-
-    public void startStealing() {
-        active = true;
-    }
-
-    public boolean isActive() {
-        return active;
     }
 
     @Override
@@ -102,28 +63,66 @@ public class SnapThiefService extends IntentService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        Log.w(getClass().getName(), "Stopping service");
+        running = false;
+        stopForeground(true);
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
-        return START_STICKY;
-    }
 
-    @Override
-    protected void onHandleIntent(Intent intent) {
-        if (!established) {
-            File dataDir = new File("/sdcard/snapthief");
-            if (!dataDir.isDirectory() && !dataDir.mkdir()) {
-                Intent i = new Intent(KILLED_ACTION);
-                sendBroadcast(i);
-
-                stopSelf();
-                return;
-            }
-
-            timer.scheduleAtFixedRate(timerTask, 0, 20 * 1000);
-            established = true;
+        Log.w(getClass().getName(), "Starting service");
+        if (running) {
+            Log.w(getClass().getName(), "Tried to duplicate, ignoring");
+            stopSelf(startId);
+            return Service.START_NOT_STICKY;
         }
+
+        running = true;
+
+        try {
+            rootProc = Runtime.getRuntime().exec("su");
+            os = new DataOutputStream(rootProc.getOutputStream());
+        } catch (IOException e) {
+            rootProc = null;
+            e.printStackTrace();
+            stopSelf(startId);
+            return Service.START_NOT_STICKY;
+        }
+
+        File dataDir = new File("/sdcard/snapthief");
+        if (!dataDir.isDirectory() && !dataDir.mkdir()) {
+            stopSelf(startId);
+            return Service.START_NOT_STICKY;
+        }
+
+        Intent i = new Intent(this, MainActivity.class);
+        i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        PendingIntent pi = PendingIntent.getActivity(this, 0, i, 0);
+
+        builder = new NotificationCompat.Builder(this)
+                .setContentTitle("SnapThief running!")
+                .setContentText("Will capture data every 20 seconds.")
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setContentIntent(pi);
+
+        manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        Notification notification = builder.build();
+        notification.flags |= Notification.FLAG_NO_CLEAR;
+
+        timer.scheduleAtFixedRate(timerTask, 0, 20 * 1000);
+
+        startForeground(0, notification);
+
+        return START_NOT_STICKY;
     }
 }
