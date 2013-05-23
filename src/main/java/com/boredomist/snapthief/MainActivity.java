@@ -18,6 +18,7 @@ import android.view.ViewGroup;
 import android.widget.*;
 
 import java.io.File;
+import java.lang.ref.SoftReference;
 import java.util.*;
 
 public class MainActivity extends Activity {
@@ -172,13 +173,13 @@ public class MainActivity extends Activity {
 
     public class ImageAdapter extends BaseAdapter implements Parcelable {
         private final ArrayList<File> files;
-        private HashMap<String, Bitmap> thumbMap;
+        private HashMap<String, SoftReference<Bitmap>> thumbMap;
         private Context context;
 
         public ImageAdapter(Context context) {
             this.context = context;
             this.files = new ArrayList<File>();
-            this.thumbMap = new HashMap<String, Bitmap>();
+            this.thumbMap = new HashMap<String, SoftReference<Bitmap>>();
         }
 
         private void loadBitmap(final ImageView view, final File f) {
@@ -186,7 +187,11 @@ public class MainActivity extends Activity {
             new Thread() {
                 @Override
                 public void run() {
-                    Bitmap bitmap = thumbMap.get(f.getName());
+                    SoftReference<Bitmap> ref = thumbMap.get(f.getName());
+                    Bitmap bitmap = null;
+
+                    if(ref != null )
+                        bitmap = ref.get();
 
                     if (bitmap == null) {
                         if (f.getName().contains(".mp4")) {
@@ -209,7 +214,7 @@ public class MainActivity extends Activity {
                                     android.R.drawable.ic_dialog_alert);
                         }
 
-                        thumbMap.put(f.getName(), bitmap);
+                        thumbMap.put(f.getName(), new SoftReference<Bitmap>(bitmap));
                     }
 
                     final Bitmap finalBitmap = bitmap;
@@ -227,7 +232,6 @@ public class MainActivity extends Activity {
 
         public void addFile(File f) {
             if (!thumbMap.containsKey(f.getName())) {
-                thumbMap.put(f.getName(), null);
                 files.add(0, f);
             }
         }
