@@ -6,10 +6,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,9 +39,9 @@ public class MainActivity extends Activity {
 
 
         if (savedInstanceState != null) {
-            toggleButton.setEnabled(savedInstanceState.getBoolean("active"));
+            toggleButton.setChecked(savedInstanceState.getBoolean("active"));
         } else {
-            toggleButton.setEnabled(true);
+            toggleButton.setChecked(true);
         }
 
         adapter = new ImageAdapter(this);
@@ -186,32 +188,53 @@ public class MainActivity extends Activity {
             this.thumbMap = new HashMap<String, Bitmap>();
         }
 
-        private void getBitmap(final File f) {
+        private void loadBitmap(final ImageView view, final File f) {
 
-            runOnUiThread(new Runnable() {
+            new Thread() {
                 @Override
                 public void run() {
-                    BitmapFactory.Options bounds = new BitmapFactory.Options();
-                    bounds.inJustDecodeBounds = true;
-                    BitmapFactory.decodeFile(f.getPath(), bounds);
+                    Bitmap bitmap = thumbMap.get(f.getName());
 
-                    if ((bounds.outWidth == -1) || (bounds.outHeight == -1)) {
-                        thumbMap.put(f.getName(), BitmapFactory.decodeResource(context.getResources(),
-                                android.R.drawable.ic_media_play));
-                    } else {
-                        BitmapFactory.Options opts = new BitmapFactory.Options();
-                        opts.inSampleSize = 4;
-                        thumbMap.put(f.getName(), BitmapFactory.decodeFile(f.getPath(), opts));
+                    if (bitmap == null) {
+                        if (f.getName().contains(".mp4")) {
+                            bitmap = ThumbnailUtils.createVideoThumbnail(f.getAbsolutePath(),
+                                    MediaStore.Images.Thumbnails.MINI_KIND);
+                        } else {
+                            BitmapFactory.Options bounds = new BitmapFactory.Options();
+                            bounds.inJustDecodeBounds = true;
+                            BitmapFactory.decodeFile(f.getPath(), bounds);
+
+                            if ((bounds.outWidth != -1) && (bounds.outHeight != -1)) {
+                                BitmapFactory.Options opts = new BitmapFactory.Options();
+                                opts.inSampleSize = 4;
+                                bitmap = BitmapFactory.decodeFile(f.getPath(), opts);
+                            }
+                        }
+
+                        if (bitmap == null) {
+                            bitmap = BitmapFactory.decodeResource(getResources(),
+                                    android.R.drawable.ic_dialog_alert);
+                        }
+
+                        thumbMap.put(f.getName(), bitmap);
                     }
+
+                    final Bitmap finalBitmap = bitmap;
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            view.setImageBitmap(finalBitmap);
+                            view.invalidate();
+                        }
+                    });
                 }
-            });
+            }.start();
         }
 
         public void addFile(File f) {
             if (!thumbMap.containsKey(f.getName())) {
-                getBitmap(f);
-                thumbMap.put(f.getName(), BitmapFactory.decodeResource(context.getResources(),
-                        android.R.drawable.ic_dialog_alert));
+                thumbMap.put(f.getName(), null);
                 files.add(0, f);
             }
         }
@@ -234,7 +257,9 @@ public class MainActivity extends Activity {
             imageView.setMaxWidth(128);
             imageView.setHapticFeedbackEnabled(true);
             imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            imageView.setImageBitmap(thumbMap.get(file.getName()));
+
+            loadBitmap(imageView, file);
+
             imageView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {

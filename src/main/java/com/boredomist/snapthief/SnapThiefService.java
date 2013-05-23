@@ -45,10 +45,6 @@ public class SnapThiefService extends Service {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            builder.setWhen(System.currentTimeMillis())
-                    .setOngoing(true);
-            manager.notify(0, builder.build());
         }
     };
 
@@ -119,9 +115,9 @@ public class SnapThiefService extends Service {
         Notification notification = builder.build();
         notification.flags |= Notification.FLAG_NO_CLEAR;
 
-        timer.scheduleAtFixedRate(timerTask, 0, 20 * 1000);
+        startForeground(999, notification);
 
-        startForeground(0, notification);
+        timer.scheduleAtFixedRate(timerTask, 0, 20 * 1000);
 
         return START_NOT_STICKY;
     }
