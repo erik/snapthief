@@ -140,11 +140,6 @@ public class MainActivity extends Activity {
                         });
                     }
 
-                    if (lastNum != -1 && files.length > lastNum) {
-                        Toast.makeText(getApplicationContext(), "Grabbed " + (files.length - lastNum) + " image(s)!",
-                                Toast.LENGTH_LONG).show();
-                    }
-
                     for (File f : fileResult) {
                         adapter.addFile(f);
                     }
@@ -155,8 +150,6 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             adapter.notifyDataSetChanged();
-                            gridView.setAdapter(adapter);
-
                             numberSnaps.setText("" + adapter.getCount());
                         }
                     });
