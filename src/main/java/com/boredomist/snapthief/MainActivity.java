@@ -71,7 +71,6 @@ public class MainActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 File file = (File) gridView.getAdapter().getItem(position);
-
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.fromFile(file)));
             }
         });
@@ -95,12 +94,16 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
     protected void onStart() {
         super.onStart();
 
         updateTimer.cancel();
         updateTimer = new Timer();
-
 
         if (!isSnapThiefServiceRunning()) {
             Intent intent = new Intent(this, SnapThiefService.class);
@@ -112,49 +115,47 @@ public class MainActivity extends Activity {
         updateTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                synchronized (getApplicationContext()) {
-                    File dir = new File("/sdcard/snapthief/");
-                    File[] files = dir.listFiles();
+                File dir = new File("/sdcard/snapthief/");
+                File[] files = dir.listFiles();
 
-                    ArrayList<File> fileResult = new ArrayList<File>();
+                ArrayList<File> fileResult = new ArrayList<File>();
 
-                    if (files != null) {
-                        for (File f : files) {
-                            if (!f.getName().contains(".nomedia"))
-                                fileResult.add(f);
-                        }
+                if (files != null) {
+                    for (File f : files) {
+                        if (!f.getName().contains(".nomedia"))
+                            fileResult.add(f);
                     }
+                }
 
 
-                    if (lastNum == -1) {
-                        Collections.sort(fileResult, new Comparator<File>() {
-                            @Override
-                            public int compare(File file, File file2) {
-                                int result = (int) (file.lastModified() - file2.lastModified());
-
-                                if (result == 0) {
-                                    return file2.compareTo(file);
-                                }
-
-                                return result;
-                            }
-                        });
-                    }
-
-                    for (File f : fileResult) {
-                        adapter.addFile(f);
-                    }
-
-                    lastNum = files.length;
-
-                    MainActivity.this.runOnUiThread(new Runnable() {
+                if (lastNum == -1) {
+                    Collections.sort(fileResult, new Comparator<File>() {
                         @Override
-                        public void run() {
-                            adapter.notifyDataSetChanged();
-                            numberSnaps.setText("" + adapter.getCount());
+                        public int compare(File file, File file2) {
+                            int result = (int) (file.lastModified() - file2.lastModified());
+
+                            if (result == 0) {
+                                return file2.compareTo(file);
+                            }
+
+                            return result;
                         }
                     });
                 }
+
+                for (File f : fileResult) {
+                    adapter.addFile(f);
+                }
+
+                lastNum = files.length;
+
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        adapter.notifyDataSetChanged();
+                        numberSnaps.setText("" + adapter.getCount());
+                    }
+                });
             }
         }, 0, 20 * 1000);
     }
@@ -172,67 +173,77 @@ public class MainActivity extends Activity {
     }
 
     public class ImageAdapter extends BaseAdapter implements Parcelable {
+        final HashMap<String, SoftReference<Bitmap>> thumbMap = new HashMap<String, SoftReference<Bitmap>>();
         private final ArrayList<File> files;
-        private HashMap<String, SoftReference<Bitmap>> thumbMap;
         private Context context;
 
         public ImageAdapter(Context context) {
             this.context = context;
             this.files = new ArrayList<File>();
-            this.thumbMap = new HashMap<String, SoftReference<Bitmap>>();
         }
 
         private void loadBitmap(final ImageView view, final File f) {
 
-            new Thread() {
-                @Override
-                public void run() {
-                    SoftReference<Bitmap> ref = thumbMap.get(f.getName());
-                    Bitmap bitmap = null;
+            synchronized (view) {
+                new Thread() {
+                    @Override
+                    public void run() {
+                        SoftReference<Bitmap> ref = null;
 
-                    if(ref != null )
-                        bitmap = ref.get();
+                        synchronized (thumbMap) {
+                            ref = thumbMap.get(f.getName());
+                        }
+                        Bitmap bitmap = null;
 
-                    if (bitmap == null) {
-                        if (f.getName().contains(".mp4")) {
-                            bitmap = ThumbnailUtils.createVideoThumbnail(f.getAbsolutePath(),
-                                    MediaStore.Images.Thumbnails.MINI_KIND);
-                        } else {
-                            BitmapFactory.Options bounds = new BitmapFactory.Options();
-                            bounds.inJustDecodeBounds = true;
-                            BitmapFactory.decodeFile(f.getPath(), bounds);
+                        if (ref != null)
+                            bitmap = ref.get();
 
-                            if ((bounds.outWidth != -1) && (bounds.outHeight != -1)) {
-                                BitmapFactory.Options opts = new BitmapFactory.Options();
-                                opts.inSampleSize = 4;
-                                bitmap = BitmapFactory.decodeFile(f.getPath(), opts);
+                        if (bitmap == null) {
+                            if (f.getName().contains(".mp4")) {
+                                bitmap = ThumbnailUtils.createVideoThumbnail(f.getAbsolutePath(),
+                                        MediaStore.Images.Thumbnails.MINI_KIND);
+                            } else {
+                                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                                bounds.inJustDecodeBounds = true;
+                                BitmapFactory.decodeFile(f.getPath(), bounds);
+
+                                if ((bounds.outWidth != -1) && (bounds.outHeight != -1)) {
+                                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                                    opts.inSampleSize = 4;
+                                    bitmap = BitmapFactory.decodeFile(f.getPath(), opts);
+                                }
+                            }
+
+                            if (bitmap == null) {
+                                bitmap = BitmapFactory.decodeResource(getResources(),
+                                        android.R.drawable.ic_dialog_alert);
+                            }
+
+                            synchronized (thumbMap) {
+                                thumbMap.put(f.getName(), new SoftReference<Bitmap>(bitmap));
                             }
                         }
 
-                        if (bitmap == null) {
-                            bitmap = BitmapFactory.decodeResource(getResources(),
-                                    android.R.drawable.ic_dialog_alert);
-                        }
+                        final Bitmap finalBitmap = bitmap;
 
-                        thumbMap.put(f.getName(), new SoftReference<Bitmap>(bitmap));
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                view.setImageBitmap(finalBitmap);
+                                view.invalidate();
+                            }
+                        });
                     }
-
-                    final Bitmap finalBitmap = bitmap;
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            view.setImageBitmap(finalBitmap);
-                            view.invalidate();
-                        }
-                    });
-                }
-            }.start();
+                }.start();
+            }
         }
 
         public void addFile(File f) {
-            if (!thumbMap.containsKey(f.getName())) {
-                files.add(0, f);
+            synchronized (thumbMap) {
+                if (!thumbMap.containsKey(f.getName())) {
+                    thumbMap.put(f.getName(), new SoftReference<Bitmap>(null));
+                    files.add(0, f);
+                }
             }
         }
 
