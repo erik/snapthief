@@ -30,15 +30,14 @@ public class SnapThiefService extends Service {
                 synchronized (this) {
                     os.flush();
 
-                    os.writeBytes("cd /sdcard/snapthief\n");
-
-                    os.writeBytes("cp -r /data/data/com.snapchat.android/cache/received_image_snaps/*"
-                            + " /sdcard/snapthief/\n");
-                    os.writeBytes("cp -r /sdcard/Android/data/com.snapchat.android/cache/received_video_snaps/*"
-                            + " /sdcard/snapthief/\n");
-                    os.writeBytes("for file in *.nomedia; do mv $file `sha512sum $file | cut -d ' ' "
-                            + "-f 1`.`expr \"$file\" : '[^\\.]*\\.\\(.*\\)\\.nomedia`; done\n");
-                    os.writeBytes("sync\n");
+                    os.writeBytes("\n\ncd /sdcard/snapthief\n"
+                            + "cp -r /data/data/com.snapchat.android/cache/received_image_snaps/*"
+                            + "   /sdcard/snapthief/\n"
+                            + "cp -r /sdcard/Android/data/com.snapchat.android/cache/received_video_snaps/*"
+                            + "   /sdcard/snapthief/\n"
+                            + "for file in *.nomedia; do mv $file `sha512sum $file | cut -d ' ' "
+                            + "   -f 1`.`expr \"$file\" : '[^\\.]*\\.\\(.*\\)\\.nomedia`; done\n"
+                            + "sync\n");
 
                     os.flush();
                 }
